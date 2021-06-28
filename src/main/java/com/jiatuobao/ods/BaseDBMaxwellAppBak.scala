@@ -10,31 +10,14 @@ import org.apache.spark.streaming.kafka010.{HasOffsetRanges, OffsetRange}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 /**
- * 数据格式:
- *     {
-        "database": "gmall-2020-04",
-        "table": "z_user_info",
-        "type": "update",
-        "ts": 1589385508,
-        "xid": 83206,
-        "xoffset": 0,
-        "data": {
-          "id": 30,
-          "user_name": "wang55",
-          "tel": "13810001010"
-        },
-        "old": {
-          "user_name": "zhang3"
-        }
-      }
   * Desc: 从Kafka中读取数据，根据表名进行分流处理（maxwell）
   */
-object BaseDBMaxwellApp {
+object BaseDBMaxwellAppBak {
   def main(args: Array[String]): Unit = {
     val conf: SparkConf = new SparkConf().setAppName("BaseDBMaxwellApp").setMaster("local[4]")
     val ssc = new StreamingContext(conf,Seconds(5))
 
-    var topic = "reportBaseMaxwell"
+    var topic = "gmall2020_db_m"
     var groupId = "base_db_maxwell_group"
 
     //从Redis中获取偏移量
