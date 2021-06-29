@@ -24,14 +24,14 @@ object SysUser2App {
 
   def main(args: Array[String]): Unit = {
     //1、从kafka读数据（1、从redis获取offset，2、转换类型，3、存入redis中或者hbase中）
-    val topic = "test"
+    val topic = "ods_sys_user2"
 
-    val groupId = "userInfoGroup"
+    val groupId = "ods_sys_user2_group"
 
-    val conf = new SparkConf().setMaster("local[4]").setAppName("UserInfoApp")
+    val conf = new SparkConf().setMaster("local[4]").setAppName("SysUser2App")
     val ssc = new StreamingContext(conf, Seconds(5))
 
-    //只在刚开始执行时，执行一次，不会周期执行
+    //从redis读取offset（只在刚开始执行时，执行一次，不会周期执行）
     val offsetMap: Map[TopicPartition, Long] = OffsetManagerUtil.getOffset(topic, groupId)
 
     var recordDStream: InputDStream[ConsumerRecord[String, String]] = null
@@ -53,11 +53,14 @@ object SysUser2App {
       }
     }
 
-    
     //map转换类型
     val user2Stream: DStream[SysUser2] = offsetDStream.map(record => {
       val value: String = record.value()
+      println(topic+":"+value)
       val user: SysUser2 = JSON.parseObject(value, classOf[SysUser2])
+
+      reAssembleFields(user)
+
       user
     })
 
@@ -77,9 +80,10 @@ object SysUser2App {
            * match argument types (cn.itcast.shop.realtime.etl.bean.DimGoodsDBEntity) and expected result type String
            * val json: String = JSON.toJSONString(goodsDBEntity)
            */
+//          println("user:"+user)
           val json: String = JSON.toJSONString(user, SerializerFeature.DisableCircularReferenceDetect)
-
-          jedis.hset("crmReportDim:sysUser2",user.id,json)
+//          println("json:"+json)
+          jedis.hset("crmReport:dim:sys_user2",user.id+"",json)
         })
         jedis.close()
 
@@ -89,10 +93,41 @@ object SysUser2App {
       OffsetManagerUtil.saveOffset(topic,groupId,offsetRanges);
     })
 
-
-
-
     ssc.start()
     ssc.awaitTermination()
+  }
+
+  /**
+   * 重新组装字段,为数字类型添加中文
+   * @param user
+   */
+  def reAssembleFields(user: SysUser2) = {
+    if(user != null){
+      if(user.status != null){
+        if(user.status == 1){
+          user.statusName = "冻结"
+        } else if(user.status == 0){
+          user.statusName = "非冻结"
+        }
+      }
+
+      if(user.gender != null){//0神秘人，1男，2女
+        if(user.gender == 0){
+          user.genderName = "神秘人"
+        } else if(user.gender == 1){
+          user.genderName = "男"
+        }else if(user.gender == 2){
+          user.genderName = "女"
+        }
+      }
+
+      if(user.changePass != null){//登录之后是否改过密码，0：未改过，1：改过
+        if(user.changePass == 0){
+          user.changePassName = "未改过密码"
+        } else if(user.changePass == 1){
+          user.changePassName = "改过密码"
+        }
+      }
+    }
   }
 }

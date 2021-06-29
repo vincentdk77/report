@@ -1,6 +1,7 @@
 package com.jiatuobao.ods
 
 import com.alibaba.fastjson.{JSON, JSONObject}
+import com.google.common.collect.Lists
 import com.jiatuobao.util.{MyKafkaSink, MyKafkaUtil, OffsetManagerUtil}
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition
@@ -8,6 +9,8 @@ import org.apache.spark.SparkConf
 import org.apache.spark.streaming.dstream.{DStream, InputDStream}
 import org.apache.spark.streaming.kafka010.{HasOffsetRanges, OffsetRange}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
+
+import java.util
 
 /**
  * 数据格式:
@@ -30,15 +33,23 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
   * Desc: 从Kafka中读取数据，根据表名进行分流处理（maxwell）
   */
 object BaseDBMaxwellApp {
+
+  private val tableNames: util.ArrayList[String] = Lists.newArrayList(
+    "sys_user2",//用户表
+    "t_country", "t_province", "t_city", "t_area",//地区表
+    "clue_saas_customer_public_sea", "saas_customer_public_sea"//线索、客户公海表
+  )
+
   def main(args: Array[String]): Unit = {
     val conf: SparkConf = new SparkConf().setAppName("BaseDBMaxwellApp").setMaster("local[4]")
     val ssc = new StreamingContext(conf,Seconds(5))
 
-    var topic = "reportBaseMaxwell"
-    var groupId = "base_db_maxwell_group"
+    var topic = "report_maxwell"
+    var groupId = "report_maxwell_group"
 
     //从Redis中获取偏移量
     val offsetMap: Map[TopicPartition, Long] = OffsetManagerUtil.getOffset(topic,groupId)
+
     var recordDStream: InputDStream[ConsumerRecord[String, String]] = null
     if(offsetMap!=null && offsetMap.size >0){
       recordDStream = MyKafkaUtil.getKafkaStream(topic,ssc,offsetMap,groupId)
@@ -48,8 +59,10 @@ object BaseDBMaxwellApp {
 
     //获取当前采集周期中读取的主题对应的分区以及偏移量
     var offsetRanges: Array[OffsetRange] = Array.empty[OffsetRange]
+    println("driver端，执行一次")
     val offsetDStream: DStream[ConsumerRecord[String, String]] = recordDStream.transform {
       rdd => {
+        println("driver端，周期性执行")
         offsetRanges = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
         rdd
       }
@@ -64,39 +77,35 @@ object BaseDBMaxwellApp {
         jsonObj
       }
     }
+
     //分流
     jsonObjDStream.foreachRDD{
       rdd=>{
-        rdd.foreach{
-          jsonObj=>{
-            //获取操作类型
-            val opType: String = jsonObj.getString("type")
-            //获取操作的数据
-            val dataJsonObj: JSONObject = jsonObj.getJSONObject("data")
-            //获取表名
-            val tableName: String = jsonObj.getString("table")
+//        if(rdd.count()>0){
+          rdd.foreach{
+            jsonObj=>{
+              //获取操作类型
+              val opType: String = jsonObj.getString("type")
+              //获取操作的数据
+              val dataJsonObj: JSONObject = jsonObj.getJSONObject("data")
+              //获取表名
+              val tableName: String = jsonObj.getString("table")
 
-            if(dataJsonObj!=null && !dataJsonObj.isEmpty ){
-              if(
-                ("order_info".equals(tableName)&&"insert".equals(opType))//todo 用insert是因为业务是求首单
-                  || (tableName.equals("order_detail") && "insert".equals(opType))
-                  ||  tableName.equals("base_province")
-                  ||  tableName.equals("user_info")
-                  ||  tableName.equals("sku_info")
-                  ||  tableName.equals("base_trademark")
-                  ||  tableName.equals("base_category3")
-                  ||  tableName.equals("spu_info")
-              ){
-                //拼接要发送到的主题
-                var sendTopic = "ods_" + tableName
-                MyKafkaSink.send(sendTopic,dataJsonObj.toString)
+              if(dataJsonObj!=null && !dataJsonObj.isEmpty ){
+                if(tableNames.contains(tableName)){
+                  //拼接要发送到的主题
+                  var sendTopic = "ods_" + tableName
+                  println(sendTopic+":"+dataJsonObj.toString)
+                  MyKafkaSink.send(sendTopic,dataJsonObj.toString)
+                }
               }
             }
           }
+          //手动提交偏移量
+          OffsetManagerUtil.saveOffset(topic,groupId,offsetRanges)
         }
-        //手动提交偏移量
-        OffsetManagerUtil.saveOffset(topic,groupId,offsetRanges)
-      }
+
+//      }
     }
     ssc.start()
     ssc.awaitTermination()
