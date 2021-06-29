@@ -66,9 +66,9 @@ object SysUser2App {
 
     //写入Redis或者Hbase
     user2Stream.foreachRDD(user2Rdd =>{
-
+      //driver端周期执行
       user2Rdd.foreachPartition(iter =>{
-
+        //executor端多次执行
         val jedis: Jedis = MyRedisUtil.getJedisClient()
         val userList: List[SysUser2] = iter.toList
 
@@ -89,7 +89,7 @@ object SysUser2App {
 
       })
 
-      //提交offset
+      //提交offset(driver端周期执行)
       OffsetManagerUtil.saveOffset(topic,groupId,offsetRanges);
     })
 
