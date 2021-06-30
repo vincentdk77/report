@@ -2,6 +2,7 @@ package com.jiatuobao.dim
 
 import com.alibaba.fastjson.{JSON, JSONObject}
 import com.alibaba.fastjson.serializer.SerializerFeature
+import com.google.common.collect.{Lists, Maps}
 import com.jiatuobao.util.{MyKafkaUtil, MyRedisUtil, OffsetManagerUtil}
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition
@@ -36,6 +37,18 @@ object ProcessUtil {
       val value = record.value()
       if(value != null){
         jsonObj = JSON.parseObject(value)
+
+//        //根据tenantId查出
+//        val map = //字段名称map
+//        for(item <- map){
+//          if(jsonObj.containsKey("key")){
+//
+//            val value1 = map.getOrDefault("key", "")
+//            jsonObj.put("key"+"Name",value1)
+//          }
+//        }
+
+
       }
       jsonObj
     })
@@ -51,7 +64,7 @@ object ProcessUtil {
           val id = json.getInteger("id")
           val jsonStr: String = JSON.toJSONString(json,SerializerFeature.DisableCircularReferenceDetect)
           println(jsonStr)
-          jedis.hset("crmReport:dim:"+tableName,id+"",jsonStr)
+          jedis.hset("crmReport:dim:"+tableName,  id+""  ,  jsonStr)
         }
         jedis.close()
       })

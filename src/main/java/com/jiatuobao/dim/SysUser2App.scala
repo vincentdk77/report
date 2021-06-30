@@ -26,7 +26,7 @@ object SysUser2App {
     //1、从kafka读数据（1、从redis获取offset，2、转换类型，3、存入redis中或者hbase中）
     val topic = "ods_sys_user2"
 
-    val groupId = "ods_sys_user2_group"
+    val groupId = "ods_sys_user2_group1"
 
     val conf = new SparkConf().setMaster("local[4]").setAppName("SysUser2App")
     val ssc = new StreamingContext(conf, Seconds(5))

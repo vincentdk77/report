@@ -2,7 +2,7 @@ package com.jiatuobao.ods
 
 import com.alibaba.fastjson.{JSON, JSONObject}
 import com.google.common.collect.Lists
-import com.jiatuobao.util.{MyKafkaSink, MyKafkaUtil, OffsetManagerUtil}
+import com.jiatuobao.util.{Constant, MyKafkaSink, MyKafkaUtil, OffsetManagerUtil}
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition
 import org.apache.spark.SparkConf
@@ -37,15 +37,23 @@ object BaseDBMaxwellApp {
   private val tableNames: util.ArrayList[String] = Lists.newArrayList(
     "sys_user2",//用户表
     "t_country", "t_province", "t_city", "t_area",//地区表
-    "clue_saas_customer_public_sea", "saas_customer_public_sea"//线索、客户公海表
+    "clue_saas_customer_public_sea", "saas_customer_public_sea",//线索、客户公海表
+    "clue_saas_crm_customer_field", "clue_saas_crm_customer_param_field"//线索字段表、线索字段参数表
+
   )
+
+  private val mongoTableNames: util.ArrayList[String] = Lists.newArrayList(
+    "saas_clue", "saas_customer"//线索表、客户表
+  )
+
+
 
   def main(args: Array[String]): Unit = {
     val conf: SparkConf = new SparkConf().setAppName("BaseDBMaxwellApp").setMaster("local[4]")
     val ssc = new StreamingContext(conf,Seconds(5))
 
     var topic = "report_maxwell"
-    var groupId = "report_maxwell_group"
+    var groupId = "report_maxwell_group1"
 
     //从Redis中获取偏移量
     val offsetMap: Map[TopicPartition, Long] = OffsetManagerUtil.getOffset(topic,groupId)
@@ -89,15 +97,28 @@ object BaseDBMaxwellApp {
               //获取操作的数据
               val dataJsonObj: JSONObject = jsonObj.getJSONObject("data")
               //获取表名
-              val tableName: String = jsonObj.getString("table")
+              var tableName: String = jsonObj.getString("table")
+
+              println(jsonObj.toJSONString)
 
               if(dataJsonObj!=null && !dataJsonObj.isEmpty ){
+                var sendTopic = ""
                 if(tableNames.contains(tableName)){
                   //拼接要发送到的主题
-                  var sendTopic = "ods_" + tableName
-                  println(sendTopic+":"+dataJsonObj.toString)
-                  MyKafkaSink.send(sendTopic,dataJsonObj.toString)
+                  sendTopic = "ods_" + tableName
+//                  println(sendTopic+":"+dataJsonObj.toString)
+//                  MyKafkaSink.send(sendTopic,dataJsonObj.toString)
+
+                }else if(tableName.indexOf(".")> -1){
+                  val tableName1 = tableName.substring(0, tableName.lastIndexOf("."))
+                  val tenantId = tableName.substring(tableName.lastIndexOf(".")+1)
+
+                  sendTopic = "ods_" + tableName1
+                  dataJsonObj.put(Constant.tenantId,tenantId)
                 }
+
+                println(sendTopic+":"+dataJsonObj.toString)
+                MyKafkaSink.send(sendTopic,dataJsonObj.toString)
               }
             }
           }
@@ -110,4 +131,5 @@ object BaseDBMaxwellApp {
     ssc.start()
     ssc.awaitTermination()
   }
+
 }
