@@ -11,7 +11,7 @@ import org.apache.spark.streaming.dstream.InputDStream
 import org.apache.spark.streaming.kafka010.{HasOffsetRanges, OffsetRange}
 import redis.clients.jedis.Jedis
 
-object ProcessUtil {
+class ProcessUtil {
 
   def process(ssc: StreamingContext, topic: String, groupId: String,tableName:String) = {
     //从redis读取offset
@@ -63,7 +63,7 @@ object ProcessUtil {
         for (json <- list) {
           val id = json.getInteger("id")
           val jsonStr: String = JSON.toJSONString(json,SerializerFeature.DisableCircularReferenceDetect)
-          println(jsonStr)
+          println(topic+":"+jsonStr)
           jedis.hset("crmReport:dim:"+tableName,  id+""  ,  jsonStr)
         }
         jedis.close()

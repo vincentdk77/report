@@ -1,6 +1,9 @@
 package com.jiatuobao.util
 
 object Constant {
+
+  final val group = "_group2"
+
   //tableNames
   final val clue_saas_crm_customer_field = "clue_saas_crm_customer_field"
   final val clue_saas_crm_customer_param_field = "clue_saas_crm_customer_param_field"
@@ -8,8 +11,7 @@ object Constant {
   final val saas_customer_public_sea = "saas_customer_public_sea"
   final val saas_clue = "saas_clue"
   final val saas_customer = "saas_customer"
-
-
+  final val sys_user2 = "sys_user2"
 
 
   //字段名
@@ -21,11 +23,15 @@ object Constant {
   final val display = "display"
   final val status = "status"
   final val isdel = "isdel"
-  final val publicSeasName = "publicSeasName"
+  final val public_seas_name = "public_seas_name"
+
 
   final val tenantId = "tenantId"
   final val publicSeaId = "publicSeaId"
-  final val public_seas_name = "public_seas_name"
+  final val publicSeasName = "publicSeasName"
+  final val creatorId = "creatorId"
+  final val lastCharger = "lastCharger"
+  final val belongToId = "belongToId"
 
   def main(args: Array[String]): Unit = {
     val tableName = "saas_clue.20664"

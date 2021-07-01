@@ -53,7 +53,7 @@ object BaseDBMaxwellApp {
     val ssc = new StreamingContext(conf,Seconds(5))
 
     var topic = "report_maxwell"
-    var groupId = "report_maxwell_group1"
+    var groupId = "report_maxwell"+Constant.group
 
     //从Redis中获取偏移量
     val offsetMap: Map[TopicPartition, Long] = OffsetManagerUtil.getOffset(topic,groupId)
@@ -80,11 +80,12 @@ object BaseDBMaxwellApp {
     val jsonObjDStream: DStream[JSONObject] = offsetDStream.map {
       record => {
         val jsonStr: String = record.value()
+        println("----"+jsonStr)
         //将json字符串转换为json对象
         val jsonObj: JSONObject = JSON.parseObject(jsonStr)
         jsonObj
       }
-    }
+    }.filter(obj =>obj != null)
 
     //分流
     jsonObjDStream.foreachRDD{
@@ -106,19 +107,21 @@ object BaseDBMaxwellApp {
                 if(tableNames.contains(tableName)){
                   //拼接要发送到的主题
                   sendTopic = "ods_" + tableName
-//                  println(sendTopic+":"+dataJsonObj.toString)
-//                  MyKafkaSink.send(sendTopic,dataJsonObj.toString)
+
+                  println(sendTopic+":"+dataJsonObj.toString)
+                  MyKafkaSink.send(sendTopic,dataJsonObj.toString)
 
                 }else if(tableName.indexOf(".")> -1){
                   val tableName1 = tableName.substring(0, tableName.lastIndexOf("."))
-                  val tenantId = tableName.substring(tableName.lastIndexOf(".")+1)
+                  val tenantId = tableName.substring(tableName.lastIndexOf(".") + 1).toInt
 
                   sendTopic = "ods_" + tableName1
                   dataJsonObj.put(Constant.tenantId,tenantId)
+                  println(sendTopic+":"+dataJsonObj.toString)
+                  MyKafkaSink.send(sendTopic,dataJsonObj.toString)
                 }
 
-                println(sendTopic+":"+dataJsonObj.toString)
-                MyKafkaSink.send(sendTopic,dataJsonObj.toString)
+
               }
             }
           }

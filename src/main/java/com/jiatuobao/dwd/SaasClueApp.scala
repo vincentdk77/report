@@ -4,6 +4,7 @@ import com.alibaba.fastjson.{JSON, JSONObject}
 import com.alibaba.fastjson.serializer.SerializerFeature
 import com.google.common.collect.Sets
 import com.jiatuobao.dim.ProcessUtil
+import com.jiatuobao.entity.SysUser2
 import com.jiatuobao.util.{Constant, MyKafkaUtil, MyRedisUtil, OffsetManagerUtil}
 import org.apache.commons.lang.StringUtils
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -22,8 +23,8 @@ object SaasClueApp {
 
   def main(args: Array[String]): Unit = {
     val tableName = Constant.saas_clue
-    val topic = "ods_"+tableName
-    val groupId = "ods_"+tableName+"_group"
+    val topic = "ods_" + tableName
+    val groupId = topic + Constant.group
 
     val conf: SparkConf = new SparkConf().setMaster("local[4]").setAppName("SaasClueApp")
     val ssc = new StreamingContext(conf, Seconds(5))
@@ -96,6 +97,7 @@ object SaasClueApp {
 
       val jedis: Jedis = MyRedisUtil.getJedisClient()
 
+      //参数维度
       import collection.JavaConverters._
       val fieldMap: util.Map[String, String] = jedis.hgetAll("crmReport:dim:" + Constant.clue_saas_crm_customer_field)
       val fieldMapMap: mutable.Map[String, String] = fieldMap.asScala.map(item => {
@@ -121,20 +123,31 @@ object SaasClueApp {
       println("paramMapMap：" + paramMapMap)
       println("paramKeySet：" + paramKeySet)
 
+      //公海维度
       val publicSeaMap: util.Map[String, String] = jedis.hgetAll("crmReport:dim:" + Constant.clue_saas_customer_public_sea)
 
+      //用户维度
+      val userMap: util.Map[String, String] = jedis.hgetAll("crmReport:dim:" + Constant.sys_user2)
+
       for (jsonObj <- jsonList) {
-        val tenantId: String = jsonObj.getString(Constant.tenantId)
+        val tenantId: Integer = jsonObj.getInteger(Constant.tenantId)
+        val creatorId: Integer = jsonObj.getInteger(Constant.creatorId)
+        val lastCharger: Integer = jsonObj.getInteger(Constant.lastCharger)
+        val belongToId: Integer = jsonObj.getInteger(Constant.belongToId)
 
         //组装各种fieldParam参数
         for (fieldKey <- paramKeySet.asScala) {
           if (jsonObj.containsKey(fieldKey)) { //本条数据包含参数字段
             println("包含该字段!!"+fieldKey)
             val fieldValue: String = jsonObj.getString(fieldKey)
-            val display = paramMapMap.getOrElse(tenantId + ":" + fieldKey + ":" + fieldValue, null)
-            println("key:"+tenantId + ":" + fieldKey + ":" + fieldValue)
-            println("display:"+display)
-            jsonObj.put(fieldKey + "Name", display)
+            if(StringUtils.isNotBlank(fieldValue)){
+              val display = paramMapMap.getOrElse(tenantId + ":" + fieldKey + ":" + fieldValue, "")
+              println("key:"+tenantId + ":" + fieldKey + ":" + fieldValue)
+              println("display:"+display)
+              if(StringUtils.isNotBlank(display)){
+                jsonObj.put(fieldKey + "Name", display)
+              }
+            }
           }
         }
 
@@ -144,15 +157,45 @@ object SaasClueApp {
           val seaJsonStr: String = publicSeaMap.getOrDefault(publicSeaId, "")
           if(StringUtils.isNotBlank(seaJsonStr)){
             val seaJsonObj: JSONObject = JSON.parseObject(seaJsonStr)
-            val public_seas_name: String = seaJsonObj.getString(Constant.public_seas_name)
-            if(StringUtils.isNotBlank(public_seas_name)){
-              jsonObj.put(Constant.publicSeasName, public_seas_name)
+            if(seaJsonObj!= null){
+              val public_seas_name: String = seaJsonObj.getString(Constant.public_seas_name)
+              if(StringUtils.isNotBlank(public_seas_name)){
+                jsonObj.put(Constant.publicSeasName, public_seas_name)
+              }
             }
           }
         }
 
+        //组装用户维度
+        if(creatorId!= null){
+          val creatorIdJsonStr: String = userMap.getOrDefault(creatorId+"", "")
+          if(StringUtils.isNotBlank(creatorIdJsonStr)){
+            val user: SysUser2 = JSON.parseObject(creatorIdJsonStr, classOf[SysUser2])
+            if(user != null){
+              jsonObj.put(Constant.creatorId+"Name",user.realName)
+            }
+          }
+        }
 
+        if(lastCharger!= null){
+          val lastChargerJsonStr: String = userMap.getOrDefault(lastCharger+"", "")
+          if(StringUtils.isNotBlank(lastChargerJsonStr)){
+            val user: SysUser2 = JSON.parseObject(lastChargerJsonStr, classOf[SysUser2])
+            if(user != null){
+              jsonObj.put(Constant.lastCharger+"Name",user.realName)
+            }
+          }
+        }
 
+        if(belongToId!= null){
+          val belongToIdJsonStr: String = userMap.getOrDefault(belongToId+"", "")
+          if(StringUtils.isNotBlank(belongToIdJsonStr)){
+            val user: SysUser2 = JSON.parseObject(belongToIdJsonStr, classOf[SysUser2])
+            if(user != null){
+              jsonObj.put(Constant.belongToId+"Name",user.realName)
+            }
+          }
+        }
       }
 
       jedis.close()
@@ -169,7 +212,7 @@ object SaasClueApp {
         for (json <- list) {
           val id = json.getJSONObject("_id").getString("$oid")
           val jsonStr: String = JSON.toJSONString(json,SerializerFeature.DisableCircularReferenceDetect)
-          println(jsonStr)
+          println(topic+":"+jsonStr)
           jedis.hset("crmReport:dwd:"+tableName,  id+""  ,  jsonStr)
         }
         jedis.close()

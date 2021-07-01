@@ -28,7 +28,7 @@ object OffsetManagerUtil {
     import scala.collection.JavaConverters._
     val oMap: Map[TopicPartition, Long] = offsetMap.asScala.map {
       case (partition, offset) => {
-        println("读取分区偏移量：" + partition + ":" + offset)
+        println("读取分区偏移量：topic:"+topic+",partition:" + partition + ",offset:" + offset)
         //Map[TopicPartition,Long]
         (new TopicPartition(topic, partition.toInt), offset.toLong)
       }
@@ -49,7 +49,7 @@ object OffsetManagerUtil {
       val fromOffset: Long = offsetRange.fromOffset
       val untilOffset: Long = offsetRange.untilOffset
       offsetMap.put(partitionId.toString,untilOffset.toString)
-      println("保存分区" + partitionId + ":" + fromOffset + "----->" + untilOffset)
+      println("保存分区,topic:"+topic+",partitionId:" + partitionId + ",fromOffset:" + fromOffset + "----->untilOffset:" + untilOffset)
     }
     val jedis: Jedis = MyRedisUtil.getJedisClient()
     jedis.hmset(offsetKey,offsetMap)

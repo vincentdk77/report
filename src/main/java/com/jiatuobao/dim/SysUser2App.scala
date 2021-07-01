@@ -3,7 +3,7 @@ package com.jiatuobao.dim
 import com.alibaba.fastjson.serializer.SerializerFeature
 import com.alibaba.fastjson.{JSON, JSONObject}
 import com.jiatuobao.entity.SysUser2
-import com.jiatuobao.util.{MyKafkaUtil, MyPropertiesUtil, MyRedisUtil, OffsetManagerUtil}
+import com.jiatuobao.util.{Constant, MyKafkaUtil, MyPropertiesUtil, MyRedisUtil, OffsetManagerUtil}
 import org.apache.hadoop.conf.Configuration
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition
@@ -24,9 +24,9 @@ object SysUser2App {
 
   def main(args: Array[String]): Unit = {
     //1、从kafka读数据（1、从redis获取offset，2、转换类型，3、存入redis中或者hbase中）
-    val topic = "ods_sys_user2"
-
-    val groupId = "ods_sys_user2_group1"
+    val tableName = Constant.sys_user2
+    val topic = "ods_" + tableName
+    val groupId = topic + Constant.group
 
     val conf = new SparkConf().setMaster("local[4]").setAppName("SysUser2App")
     val ssc = new StreamingContext(conf, Seconds(5))
