@@ -17,7 +17,7 @@ object MyRedisUtil {
     val password = prop.getProperty("redis.password")
 
     val jedisPoolConfig: JedisPoolConfig = new JedisPoolConfig
-    jedisPoolConfig.setMaxTotal(100)  //最大连接数
+    jedisPoolConfig.setMaxTotal(500)  //最大连接数
     jedisPoolConfig.setMaxIdle(20)   //最大空闲
     jedisPoolConfig.setMinIdle(20)     //最小空闲
     jedisPoolConfig.setBlockWhenExhausted(true)  //忙碌时是否等待

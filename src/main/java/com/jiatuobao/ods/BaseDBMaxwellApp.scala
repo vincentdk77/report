@@ -38,7 +38,8 @@ object BaseDBMaxwellApp {
     "sys_user2",//用户表
     "t_country", "t_province", "t_city", "t_area",//地区表
     "clue_saas_customer_public_sea", "saas_customer_public_sea",//线索、客户公海表
-    "clue_saas_crm_customer_field", "clue_saas_crm_customer_param_field"//线索字段表、线索字段参数表
+    "clue_saas_crm_customer_field", "clue_saas_crm_customer_param_field",//线索字段表、线索字段参数表
+    "user"
 
   )
 
@@ -52,8 +53,8 @@ object BaseDBMaxwellApp {
     val conf: SparkConf = new SparkConf().setAppName("BaseDBMaxwellApp").setMaster("local[4]")
     val ssc = new StreamingContext(conf,Seconds(5))
 
-    var topic = "report_maxwell"
-    var groupId = "report_maxwell"+Constant.group
+    var topic = Constant.report_maxwell_topic
+    var groupId = topic+Constant.group
 
     //从Redis中获取偏移量
     val offsetMap: Map[TopicPartition, Long] = OffsetManagerUtil.getOffset(topic,groupId)
@@ -80,7 +81,7 @@ object BaseDBMaxwellApp {
     val jsonObjDStream: DStream[JSONObject] = offsetDStream.map {
       record => {
         val jsonStr: String = record.value()
-        println("----"+jsonStr)
+//        println("----"+jsonStr)
         //将json字符串转换为json对象
         val jsonObj: JSONObject = JSON.parseObject(jsonStr)
         jsonObj
@@ -100,7 +101,7 @@ object BaseDBMaxwellApp {
               //获取表名
               var tableName: String = jsonObj.getString("table")
 
-              println(jsonObj.toJSONString)
+//              println(jsonObj.toJSONString)
 
               if(dataJsonObj!=null && !dataJsonObj.isEmpty ){
                 var sendTopic = ""

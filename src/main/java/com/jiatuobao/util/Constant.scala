@@ -2,6 +2,8 @@ package com.jiatuobao.util
 
 object Constant {
 
+  final val report_maxwell_topic = "report_maxwell"
+
   final val group = "_group2"
 
   //tableNames
