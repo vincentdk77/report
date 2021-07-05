@@ -13,6 +13,7 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
+import com.mongodb.client.MongoIterable;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -26,6 +27,7 @@ import redis.clients.jedis.Jedis;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * 1、删除
@@ -100,22 +102,48 @@ import java.util.concurrent.TimeUnit;
  *
  */
 @Slf4j
-public class MongoOpLogUtil {
-    public static void main(String[] args) {
+public class MongoOpLogUtilIncrement {
+    public static void main(String[] args) throws InterruptedException {
         OpLogTest();
     }
 
 
     private static BsonTimestamp queryTs;
-    private static List<String> nameSpaces = Lists.newArrayList("test.user");
+    private static List<String> nsLists = Lists.newArrayList();
 
     @Test
-    public static  void OpLogTest() {
+    public static  void OpLogTest() throws InterruptedException {
         Jedis jedis = MyRedisUtil.getJedisClient();
         String ts = jedis.get("mongo:ts");
 
-//        MongoClient mongoClient = new MongoClient(new MongoClientURI("mongodb://admin:kemai%40startup!!@node11:27001"));
-        MongoClient mongoClient = new MongoClient(new MongoClientURI("mongodb://admin:admin@hadoop102:27018"));
+        MongoClient mongoClient = new MongoClient(new MongoClientURI("mongodb://dongkun:dongkun123@node9:28019"));
+//        MongoClient mongoClient = new MongoClient(new MongoClientURI("mongodb://admin:admin@hadoop102:27018"));
+
+        //获取命名空间list
+        MongoIterable<String> collectionNames = mongoClient.getDatabase("crm").listCollectionNames();
+
+        for (String collectionName : collectionNames) {
+            String ns = "crm."+collectionName;
+            if(StringUtils.isNotBlank(ns)){
+                nsLists.add(ns);
+            }
+        }
+        nsLists = nsLists.stream().filter(ns ->{
+            if(ns.startsWith("crm.saas_clue")
+                    || ns.startsWith("crm.saas_customer")
+                    || ns.startsWith("crm.saas_contact")
+                    || ns.startsWith("crm.saas_opport")
+                    || ns.startsWith("crm.saas_agreement")
+                    || ns.startsWith("crm.saas_record")){
+//                if(ns.startsWith("crm.saas_opport.20664")){//测试单表
+                return true;
+            }else{
+                return false;
+            }
+        }).collect(Collectors.toList());
+        System.out.println("带查询oplog的命名空间list:"+nsLists);
+
+        //获取oplog时间戳
         MongoCollection<Document> opLogCollection = mongoClient.getDatabase("local")
                 .getCollection("oplog.rs");
 
@@ -126,46 +154,48 @@ public class MongoOpLogUtil {
             queryTs = new BsonTimestamp(value);
             log.warn("redisTs:"+JSON.toJSONString(queryTs));
         }else{
-            //如果是首次订阅，需要使用自然排序查询，获取第最后一次操作的操作时间戳。如果是续订阅直接读取记录的值赋值给queryTs即可
+            //如果是首次订阅，需要使用自然排序查询，获取第最后一次操作的操作时间戳。
+            // 如果是续订阅直接读取记录的值赋值给queryTs即可
             FindIterable<Document> tsCursor = opLogCollection.find().sort(new BasicDBObject("$natural", -1)).limit(1);
             Document tsDoc = tsCursor.first();
             queryTs = (BsonTimestamp) tsDoc.get("ts");
             log.warn("查询mongo最新ts:"+JSON.toJSONString(queryTs));
         }
 
-        Integer i =0;
+        Long i = 0L;
 
         while (true) {
 //            try {
                 //构建查询语句,查询大于当前查询时间戳queryTs的记录
-                BasicDBObject query = new BasicDBObject("ts", new BasicDBObject("$gt", queryTs));// TODO: 2021/7/2 只查指定的表
-                MongoCursor<Document> opDocuments = opLogCollection.find(query)
+                BasicDBObject query = new BasicDBObject("ts", new BasicDBObject("$gt", queryTs))
+                        .append("ns",new BasicDBObject("$in", nsLists));
+                MongoCursor<Document> opDocuments = opLogCollection.find(query).limit(2000)//每次读2千条数据，防止内存崩了
                         .cursorType(CursorType.TailableAwait) //没有数据时阻塞休眠
                         .noCursorTimeout(true) //防止服务器在不活动时间（10分钟）后使空闲的游标超时。
                         .oplogReplay(true) //结合query条件，获取增量数据，这个参数比较难懂，见：https://docs.mongodb.com/manual/reference/command/find/index.html
                         .maxAwaitTime(1, TimeUnit.SECONDS) //设置此操作在服务器上的最大等待执行时间
                         .iterator();
+                if(opDocuments.hasNext()){
+                    while (opDocuments.hasNext()) {
 
-                while (opDocuments.hasNext()) {
+                        String message = "";
+                        Document document = opDocuments.next();
+                        //TODO 在这里接收到数据后通过订阅数据路由分发
+                        String ns = document.getString("ns");
 
-                    String message = "";
-                    Document document = opDocuments.next();
-                    //TODO 在这里接收到数据后通过订阅数据路由分发
-                    String ns = document.getString("ns");
-
-                    if(nameSpaces.contains(ns)){
-                        log.warn("oplog:"+JSON.toJSONString(document));
                         log.warn("i="+ ++i);
+                        log.warn("oplog:"+JSON.toJSONString(document));
                         String op = document.getString("op");// i、u、d
                         String database = ns.substring(0, ns.indexOf("."));
-                        String tableName = ns.substring(ns.indexOf(".")+1);
+                        String realTableName = ns.substring(ns.indexOf(".")+1);
+                        String sendTableName = ns.substring(ns.indexOf(".")+1,ns.lastIndexOf("."));
                         Document context = (Document) document.get("o");//文档内容
                         Document where = null;
 
                         //处理新增
                         if (op.equals("i")) {
-                            message = resembleJsonFields(context,database,tableName,"insert");
-                            log.warn("insert:"+message);
+                            message = resembleJsonFields(context,database,sendTableName,"insert");
+                            log.warn("insert: realTableName="+realTableName+":"+message);
                             MyKafkaSink.send(Constant.report_maxwell_topic(),message);
                         }
 
@@ -177,12 +207,12 @@ public class MongoOpLogUtil {
                             }
 
                             MongoCollection<Document> collection = mongoClient.getDatabase(database)
-                                    .getCollection(tableName);
+                                    .getCollection(realTableName);
                             FindIterable<Document> documents = collection.find(where);
 
                             for (Document document1 : documents) {
-                                message = resembleJsonFields(document1,database,tableName,"update");
-                                log.warn("update:"+message);
+                                message = resembleJsonFields(document1,database,sendTableName,"update");
+                                log.warn("update: realTableName="+realTableName+":"+message);
                                 MyKafkaSink.send(Constant.report_maxwell_topic(),message);
                             }
                         }
@@ -191,12 +221,12 @@ public class MongoOpLogUtil {
                         if (op.equals("d")) {
                             where = context;
                             MongoCollection<Document> testCollection = mongoClient.getDatabase(database)
-                                    .getCollection(tableName);
+                                    .getCollection(realTableName);
                             FindIterable<Document> documents = testCollection.find(where);
 
                             for (Document document1 : documents) {
-                                message = resembleJsonFields(document1,database,tableName,"delete");
-                                log.warn("delete:"+message);
+                                message = resembleJsonFields(document1,database,sendTableName,"delete");
+                                log.warn("delete: realTableName="+realTableName+":"+message);
                                 MyKafkaSink.send(Constant.report_maxwell_topic(),message);
                             }
                         }
@@ -217,8 +247,11 @@ public class MongoOpLogUtil {
 ////                        log.warn("更新条件：" + JSON.toJSONString(where));
 //                        log.warn("文档内容：" + JSON.toJSONString(context));
 
-                    }
 
+                    }
+                }else{
+                    log.warn("没有变更数据，休眠10s");
+                    Thread.sleep(10*1000);
                 }
 //            } catch (Exception e) {
 //                e.printStackTrace();
