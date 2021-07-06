@@ -1,6 +1,6 @@
 package com.jiatuobao.dim
 
-import com.jiatuobao.util.Constant
+import com.jiatuobao.utils.Constant
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 

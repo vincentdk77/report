@@ -3,7 +3,7 @@ package com.jiatuobao.dim
 import com.alibaba.fastjson.serializer.SerializerFeature
 import com.alibaba.fastjson.{JSON, JSONObject}
 import com.jiatuobao.entity.SysUser2
-import com.jiatuobao.util.{Constant, MyKafkaUtil, MyPropertiesUtil, MyRedisUtil, OffsetManagerUtil}
+import com.jiatuobao.utils.{Constant, MyKafkaUtil, MyRedisUtil, OffsetManagerUtil}
 import org.apache.hadoop.conf.Configuration
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition

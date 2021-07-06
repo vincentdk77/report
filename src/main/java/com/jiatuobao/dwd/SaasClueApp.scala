@@ -5,7 +5,7 @@ import com.alibaba.fastjson.serializer.SerializerFeature
 import com.google.common.collect.Sets
 import com.jiatuobao.dim.ProcessUtil
 import com.jiatuobao.entity.SysUser2
-import com.jiatuobao.util.{Constant, MyKafkaUtil, MyRedisUtil, OffsetManagerUtil}
+import com.jiatuobao.utils.{Constant, MyKafkaUtil, MyRedisUtil, OffsetManagerUtil}
 import org.apache.commons.lang.StringUtils
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition

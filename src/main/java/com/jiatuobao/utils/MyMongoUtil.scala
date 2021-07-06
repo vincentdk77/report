@@ -1,7 +1,6 @@
-package com.jiatuobao.util
+package com.jiatuobao.utils
 
-import com.mongodb.{MongoClient, MongoClientURI, MongoDriverInformation}
-import redis.clients.jedis.{Jedis, JedisPool, JedisPoolConfig}
+import com.mongodb.{MongoClient, MongoClientURI}
 
 /**
   * Desc: 获取Jedis客户端的工具类

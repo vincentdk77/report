@@ -1,4 +1,4 @@
-package com.jiatuobao.util
+package com.jiatuobao.utils
 
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition

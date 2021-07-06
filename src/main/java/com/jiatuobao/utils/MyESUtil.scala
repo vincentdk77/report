@@ -1,4 +1,4 @@
-package com.jiatuobao.util
+package com.jiatuobao.utils
 
 import io.searchbox.client.config.HttpClientConfig
 import io.searchbox.client.{JestClient, JestClientFactory}

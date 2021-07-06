@@ -2,7 +2,7 @@ package com.jiatuobao.ods
 
 import com.alibaba.fastjson.{JSON, JSONObject}
 import com.google.common.collect.Lists
-import com.jiatuobao.util.{Constant, MyKafkaSink, MyKafkaUtil, OffsetManagerUtil}
+import com.jiatuobao.utils.{Constant, MyKafkaSink, MyKafkaUtil, OffsetManagerUtil}
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition
 import org.apache.spark.SparkConf

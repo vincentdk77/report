@@ -3,7 +3,7 @@ package com.jiatuobao.dim
 import com.alibaba.fastjson.{JSON, JSONObject}
 import com.alibaba.fastjson.serializer.SerializerFeature
 import com.google.common.collect.{Lists, Maps}
-import com.jiatuobao.util.{MyKafkaUtil, MyRedisUtil, OffsetManagerUtil}
+import com.jiatuobao.utils.{MyKafkaUtil, MyRedisUtil, OffsetManagerUtil}
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition
 import org.apache.spark.streaming.StreamingContext

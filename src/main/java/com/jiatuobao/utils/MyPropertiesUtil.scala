@@ -1,4 +1,4 @@
-package com.jiatuobao.util
+package com.jiatuobao.utils
 
 import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets

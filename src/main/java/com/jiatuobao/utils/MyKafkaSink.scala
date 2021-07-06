@@ -1,4 +1,4 @@
-package com.jiatuobao.util
+package com.jiatuobao.utils
 
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 
