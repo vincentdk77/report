@@ -63,7 +63,7 @@ class ProcessUtil {
         for (json <- list) {
           val id = json.getInteger("id")
           val jsonStr: String = JSON.toJSONString(json,SerializerFeature.DisableCircularReferenceDetect)
-          println(topic+":"+jsonStr)
+          println("topic: "+topic+", redisKey: crmReport:dwd:"+tableName+", json: "+jsonStr)
           jedis.hset("crmReport:dim:"+tableName,  id+""  ,  jsonStr)
         }
         jedis.close()

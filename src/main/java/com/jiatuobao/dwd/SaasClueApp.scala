@@ -210,9 +210,9 @@ object SaasClueApp {
         val jedis: Jedis = MyRedisUtil.getJedisClient()
         val list: List[JSONObject] = iter.toList
         for (json <- list) {
-          val id = json.getJSONObject("_id").getString("$oid")
+          val id = json.getString("_id")
           val jsonStr: String = JSON.toJSONString(json,SerializerFeature.DisableCircularReferenceDetect)
-          println(topic+":"+jsonStr)
+          println("topic: "+topic+", redisKey: crmReport:dwd:"+tableName+", json: "+jsonStr)
           jedis.hset("crmReport:dwd:"+tableName,  id+""  ,  jsonStr)
         }
         jedis.close()

@@ -101,13 +101,14 @@ public class MongoOpLogUtilIncrementShard2 {
 
     public static void main(String[] args) throws InterruptedException {
         Jedis jedis = MyRedisUtil.getJedisClient();
-        MongoClient mongoClient = MyMongoUtil.getMongoShard2Client();
+        MongoClient mongoClient1 = MyMongoUtil.getMongoShard1Client();
+        MongoClient mongoClient2 = MyMongoUtil.getMongoShard2Client();
 
-        OpLogTest(jedis,mongoClient);
+        OpLogTest(jedis,mongoClient2,mongoClient1);
     }
 
     @Test
-    public static  void OpLogTest(Jedis jedis, MongoClient mongoClient) throws InterruptedException {
+    public static  void OpLogTest(Jedis jedis, MongoClient mongoClient2,MongoClient mongoClient1) throws InterruptedException {
 //        Jedis jedis = MyRedisUtil.getJedisClient();
         String ts = jedis.get("mongo:ts");
 
@@ -115,8 +116,8 @@ public class MongoOpLogUtilIncrementShard2 {
 //        MongoClient mongoShard1Client = MyMongoUtil.getMongoShard1Client();
 //        MongoClient mongoShard2Client = MyMongoUtil.getMongoShard2Client();
 
-        //获取命名空间list
-        MongoIterable<String> collectionNames = mongoClient.getDatabase("crm").listCollectionNames();
+        //获取命名空间list // TODO: 2021/7/6 shard2上没有crm库，无法查询有哪些crm表
+        MongoIterable<String> collectionNames = mongoClient1.getDatabase("crm").listCollectionNames();
 
         for (String collectionName : collectionNames) {
             String ns = "crm."+collectionName;
@@ -140,7 +141,7 @@ public class MongoOpLogUtilIncrementShard2 {
         System.out.println("查询oplog的命名空间list:"+nsLists);
 
         //获取oplog时间戳
-        MongoCollection<Document> opLogCollection = mongoClient.getDatabase("local")
+        MongoCollection<Document> opLogCollection = mongoClient2.getDatabase("local")
                 .getCollection("oplog.rs");
 
         if(StringUtils.isNotBlank(ts)){
@@ -202,7 +203,7 @@ public class MongoOpLogUtilIncrementShard2 {
                                 context = (Document) context.get("$set");
                             }
 
-                            MongoCollection<Document> collection = mongoClient.getDatabase(database)
+                            MongoCollection<Document> collection = mongoClient2.getDatabase(database)
                                     .getCollection(realTableName);
                             FindIterable<Document> documents = collection.find(where);
 
@@ -216,7 +217,7 @@ public class MongoOpLogUtilIncrementShard2 {
                         //处理删除
                         if (op.equals("d")) {
                             where = context;
-                            MongoCollection<Document> testCollection = mongoClient.getDatabase(database)
+                            MongoCollection<Document> testCollection = mongoClient2.getDatabase(database)
                                     .getCollection(realTableName);
                             FindIterable<Document> documents = testCollection.find(where);
 

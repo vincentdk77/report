@@ -138,7 +138,7 @@ public class MongoOpLogUtilIncrementShard1 {
                     || ns.startsWith("crm.saas_opport")
                     || ns.startsWith("crm.saas_agreement")
                     || ns.startsWith("crm.saas_record")){
-//                if(ns.startsWith("crm.saas_opport.20664")){//测试单表
+//                if(ns.startsWith("crm.saas_opport.2002")){//测试单表
                 return true;
             }else{
                 return false;

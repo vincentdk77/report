@@ -81,9 +81,10 @@ object SysUser2App {
            * val json: String = JSON.toJSONString(goodsDBEntity)
            */
 //          println("user:"+user)
-          val json: String = JSON.toJSONString(user, SerializerFeature.DisableCircularReferenceDetect)
+          val jsonStr: String = JSON.toJSONString(user, SerializerFeature.DisableCircularReferenceDetect)
+          println("topic: "+topic+", redisKey: crmReport:dwd:"+tableName+", json: "+jsonStr)
 //          println("json:"+json)
-          jedis.hset("crmReport:dim:sys_user2",user.id+"",json)
+          jedis.hset("crmReport:dim:sys_user2",user.id+"",jsonStr)
         })
         jedis.close()
 
