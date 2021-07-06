@@ -3,14 +3,10 @@ package com.jiatuobao.mongo;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Lists;
-import com.jiatuobao.util.Constant;
-import com.jiatuobao.util.MyKafkaSink;
-import com.jiatuobao.util.MyMongoUtil;
-import com.jiatuobao.util.MyRedisUtil;
+import com.jiatuobao.util.*;
 import com.mongodb.BasicDBObject;
 import com.mongodb.CursorType;
 import com.mongodb.MongoClient;
-import com.mongodb.MongoClientURI;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
@@ -22,7 +18,6 @@ import org.bson.Document;
 import org.junit.Test;
 import redis.clients.jedis.Jedis;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -100,23 +95,25 @@ import java.util.stream.Collectors;
  *
  */
 @Slf4j
-public class MongoOpLogUtilAll {
+public class MongoOpLogUtilIncrementShard2 {
     private static BsonTimestamp queryTs;
     private static List<String> nsLists = Lists.newArrayList();
 
     public static void main(String[] args) throws InterruptedException {
         Jedis jedis = MyRedisUtil.getJedisClient();
         MongoClient mongoClient = MyMongoUtil.getMongoShard2Client();
+
         OpLogTest(jedis,mongoClient);
     }
 
     @Test
     public static  void OpLogTest(Jedis jedis, MongoClient mongoClient) throws InterruptedException {
 //        Jedis jedis = MyRedisUtil.getJedisClient();
-//        String ts = jedis.get("mongo:ts");
+        String ts = jedis.get("mongo:ts");
 
 //        //连接mongo shard地址
-//        MongoClient mongoClient = MyMongoUtil.getMongoShard1Client();
+//        MongoClient mongoShard1Client = MyMongoUtil.getMongoShard1Client();
+//        MongoClient mongoShard2Client = MyMongoUtil.getMongoShard2Client();
 
         //获取命名空间list
         MongoIterable<String> collectionNames = mongoClient.getDatabase("crm").listCollectionNames();
@@ -142,24 +139,24 @@ public class MongoOpLogUtilAll {
         }).collect(Collectors.toList());
         System.out.println("查询oplog的命名空间list:"+nsLists);
 
-
         //获取oplog时间戳
         MongoCollection<Document> opLogCollection = mongoClient.getDatabase("local")
                 .getCollection("oplog.rs");
 
-//        if(StringUtils.isNotBlank(ts)){
-////            queryTs = JSON.parseObject(ts, BsonTimestamp.class);
-//            Document ts1 = JSON.parseObject(ts, Document.class);
-//            Long value = ts1.getLong("value");
-//            queryTs = new BsonTimestamp(value);
-//            log.warn("redisTs:"+JSON.toJSONString(queryTs));
-//        }else{
-            //如果是首次订阅，需要使用自然排序查询，获取最后一次操作的操作时间戳。如果是续订阅直接读取记录的值赋值给queryTs即可
-            FindIterable<Document> tsCursor = opLogCollection.find().sort(new BasicDBObject("$natural", 1)).limit(1);//从第一条记录开始查
+        if(StringUtils.isNotBlank(ts)){
+//            queryTs = JSON.parseObject(ts, BsonTimestamp.class);
+            Document ts1 = JSON.parseObject(ts, Document.class);
+            Long value = ts1.getLong("value");
+            queryTs = new BsonTimestamp(value);
+            log.warn("redisTs:"+JSON.toJSONString(queryTs));
+        }else{
+            //如果是首次订阅，需要使用自然排序查询，获取第最后一次操作的操作时间戳。
+            // 如果是续订阅直接读取记录的值赋值给queryTs即可
+            FindIterable<Document> tsCursor = opLogCollection.find().sort(new BasicDBObject("$natural", -1)).limit(1);
             Document tsDoc = tsCursor.first();
             queryTs = (BsonTimestamp) tsDoc.get("ts");
             log.warn("查询mongo最新ts:"+JSON.toJSONString(queryTs));
-//        }
+        }
 
         Long i = 0L;
 
@@ -187,13 +184,13 @@ public class MongoOpLogUtilAll {
                         String op = document.getString("op");// i、u、d
                         String database = ns.substring(0, ns.indexOf("."));
                         String realTableName = ns.substring(ns.indexOf(".")+1);
-                        String sendTableName = ns.substring(ns.indexOf(".")+1,ns.lastIndexOf("."));
+//                        String sendTableName = ns.substring(ns.indexOf(".")+1,ns.lastIndexOf("."));
                         Document context = (Document) document.get("o");//文档内容
                         Document where = null;
 
                         //处理新增
                         if (op.equals("i")) {
-                            message = resembleJsonFields(context,database,sendTableName,"insert");
+                            message = resembleJsonFields(context,database,realTableName,"insert");
                             log.warn("insert: realTableName="+realTableName+":"+message);
                             MyKafkaSink.send(Constant.report_maxwell_topic(),message);
                         }
@@ -210,7 +207,7 @@ public class MongoOpLogUtilAll {
                             FindIterable<Document> documents = collection.find(where);
 
                             for (Document document1 : documents) {
-                                message = resembleJsonFields(document1,database,sendTableName,"update");
+                                message = resembleJsonFields(document1,database,realTableName,"update");
                                 log.warn("update: realTableName="+realTableName+":"+message);
                                 MyKafkaSink.send(Constant.report_maxwell_topic(),message);
                             }
@@ -224,7 +221,7 @@ public class MongoOpLogUtilAll {
                             FindIterable<Document> documents = testCollection.find(where);
 
                             for (Document document1 : documents) {
-                                message = resembleJsonFields(document1,database,sendTableName,"delete");
+                                message = resembleJsonFields(document1,database,realTableName,"delete");
                                 log.warn("delete: realTableName="+realTableName+":"+message);
                                 MyKafkaSink.send(Constant.report_maxwell_topic(),message);
                             }
@@ -235,6 +232,7 @@ public class MongoOpLogUtilAll {
 
                         //保存时间戳
                         jedis.set("mongo:ts", JSON.toJSONString(queryTs));
+                        System.out.println("ts:"+queryTs);
 //                        jedis.close();
 
 //                        log.warn("操作时间戳：" + queryTs.getTime());
@@ -246,7 +244,6 @@ public class MongoOpLogUtilAll {
 ////                        log.warn("更新条件：" + JSON.toJSONString(where));
 //                        log.warn("文档内容：" + JSON.toJSONString(context));
 
-//                        }
 
                     }
                 }else{

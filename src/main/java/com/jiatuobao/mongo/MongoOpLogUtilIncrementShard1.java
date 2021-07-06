@@ -3,9 +3,7 @@ package com.jiatuobao.mongo;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Lists;
-import com.jiatuobao.util.Constant;
-import com.jiatuobao.util.MyKafkaSink;
-import com.jiatuobao.util.MyRedisUtil;
+import com.jiatuobao.util.*;
 import com.mongodb.BasicDBObject;
 import com.mongodb.CursorType;
 import com.mongodb.MongoClient;
@@ -15,9 +13,11 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoIterable;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.net.ntp.TimeStamp;
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 import org.apache.spark.streaming.kafka010.KafkaUtils;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
@@ -102,22 +102,25 @@ import java.util.stream.Collectors;
  *
  */
 @Slf4j
-public class MongoOpLogUtilIncrement {
-    public static void main(String[] args) throws InterruptedException {
-        OpLogTest();
-    }
-
-
+public class MongoOpLogUtilIncrementShard1 {
     private static BsonTimestamp queryTs;
     private static List<String> nsLists = Lists.newArrayList();
 
-    @Test
-    public static  void OpLogTest() throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException {
         Jedis jedis = MyRedisUtil.getJedisClient();
+        MongoClient mongoClient = MyMongoUtil.getMongoShard1Client();
+
+        OpLogTest(jedis,mongoClient);
+    }
+
+    @Test
+    public static  void OpLogTest(Jedis jedis, MongoClient mongoClient) throws InterruptedException {
+//        Jedis jedis = MyRedisUtil.getJedisClient();
         String ts = jedis.get("mongo:ts");
 
-        MongoClient mongoClient = new MongoClient(new MongoClientURI("mongodb://dongkun:dongkun123@node9:28019"));
-//        MongoClient mongoClient = new MongoClient(new MongoClientURI("mongodb://admin:admin@hadoop102:27018"));
+//        //连接mongo shard地址
+//        MongoClient mongoShard1Client = MyMongoUtil.getMongoShard1Client();
+//        MongoClient mongoShard2Client = MyMongoUtil.getMongoShard2Client();
 
         //获取命名空间list
         MongoIterable<String> collectionNames = mongoClient.getDatabase("crm").listCollectionNames();
@@ -141,7 +144,7 @@ public class MongoOpLogUtilIncrement {
                 return false;
             }
         }).collect(Collectors.toList());
-        System.out.println("带查询oplog的命名空间list:"+nsLists);
+        System.out.println("查询oplog的命名空间list:"+nsLists);
 
         //获取oplog时间戳
         MongoCollection<Document> opLogCollection = mongoClient.getDatabase("local")
@@ -188,13 +191,13 @@ public class MongoOpLogUtilIncrement {
                         String op = document.getString("op");// i、u、d
                         String database = ns.substring(0, ns.indexOf("."));
                         String realTableName = ns.substring(ns.indexOf(".")+1);
-                        String sendTableName = ns.substring(ns.indexOf(".")+1,ns.lastIndexOf("."));
+//                        String sendTableName = ns.substring(ns.indexOf(".")+1,ns.lastIndexOf("."));
                         Document context = (Document) document.get("o");//文档内容
                         Document where = null;
 
                         //处理新增
                         if (op.equals("i")) {
-                            message = resembleJsonFields(context,database,sendTableName,"insert");
+                            message = resembleJsonFields(context,database,realTableName,"insert");
                             log.warn("insert: realTableName="+realTableName+":"+message);
                             MyKafkaSink.send(Constant.report_maxwell_topic(),message);
                         }
@@ -211,7 +214,7 @@ public class MongoOpLogUtilIncrement {
                             FindIterable<Document> documents = collection.find(where);
 
                             for (Document document1 : documents) {
-                                message = resembleJsonFields(document1,database,sendTableName,"update");
+                                message = resembleJsonFields(document1,database,realTableName,"update");
                                 log.warn("update: realTableName="+realTableName+":"+message);
                                 MyKafkaSink.send(Constant.report_maxwell_topic(),message);
                             }
@@ -225,7 +228,7 @@ public class MongoOpLogUtilIncrement {
                             FindIterable<Document> documents = testCollection.find(where);
 
                             for (Document document1 : documents) {
-                                message = resembleJsonFields(document1,database,sendTableName,"delete");
+                                message = resembleJsonFields(document1,database,realTableName,"delete");
                                 log.warn("delete: realTableName="+realTableName+":"+message);
                                 MyKafkaSink.send(Constant.report_maxwell_topic(),message);
                             }
@@ -236,6 +239,7 @@ public class MongoOpLogUtilIncrement {
 
                         //保存时间戳
                         jedis.set("mongo:ts", JSON.toJSONString(queryTs));
+                        System.out.println("ts:"+queryTs);
 //                        jedis.close();
 
 //                        log.warn("操作时间戳：" + queryTs.getTime());

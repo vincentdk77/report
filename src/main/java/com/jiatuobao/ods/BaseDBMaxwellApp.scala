@@ -112,7 +112,13 @@ object BaseDBMaxwellApp {
                   println(sendTopic+":"+dataJsonObj.toString)
                   MyKafkaSink.send(sendTopic,dataJsonObj.toString)
 
-                }else if(tableName.indexOf(".")> -1){
+                }else if (tableName.startsWith("saas_clue") 
+                  || tableName.startsWith("saas_customer") 
+                  || tableName.startsWith("saas_contact") 
+                  || tableName.startsWith("saas_opport") 
+                  || tableName.startsWith("saas_agreement") 
+                  || tableName.startsWith("saas_record")) {
+
                   val tableName1 = tableName.substring(0, tableName.lastIndexOf("."))
                   val tenantId = tableName.substring(tableName.lastIndexOf(".") + 1).toInt
 
