@@ -68,10 +68,10 @@ object BaseDBMaxwellApp {
 
     //获取当前采集周期中读取的主题对应的分区以及偏移量
     var offsetRanges: Array[OffsetRange] = Array.empty[OffsetRange]
-    println("driver端，执行一次")
+//    println("driver端，执行一次")
     val offsetDStream: DStream[ConsumerRecord[String, String]] = recordDStream.transform {
       rdd => {
-        println("driver端，周期性执行")
+//        println("driver端，周期性执行")
         offsetRanges = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
         rdd
       }

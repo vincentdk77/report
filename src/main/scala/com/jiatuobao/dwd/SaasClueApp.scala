@@ -5,7 +5,7 @@ import com.alibaba.fastjson.serializer.SerializerFeature
 import com.google.common.collect.Sets
 import com.jiatuobao.dim.ProcessUtil
 import com.jiatuobao.entity.SysUser2
-import com.jiatuobao.utils.{Constant, MyKafkaUtil, MyRedisUtil, OffsetManagerUtil}
+import com.jiatuobao.utils.{Constant, MyESUtil, MyKafkaUtil, MyRedisUtil, OffsetManagerUtil}
 import org.apache.commons.lang.StringUtils
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition
@@ -14,10 +14,12 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.streaming.dstream.{DStream, InputDStream}
 import org.apache.spark.streaming.kafka010.{HasOffsetRanges, OffsetRange}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.elasticsearch.client.RestHighLevelClient
 import redis.clients.jedis.Jedis
 
 import java.util
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 object SaasClueApp {
 
@@ -202,20 +204,38 @@ object SaasClueApp {
       jsonList.toIterator
     })
 
-    //存入redis中
+    //存入redis、ES中
     resultJsonStream.foreachRDD(rdd =>{
       //driver端周期执行
       rdd.foreachPartition(iter =>{
         //executor端多次执行
-        val jedis: Jedis = MyRedisUtil.getJedisClient()
+//        val jedis: Jedis = MyRedisUtil.getJedisClient()
+        val highLevelClient: RestHighLevelClient = MyESUtil.getClient()
         val list: List[JSONObject] = iter.toList
+        val esList: ListBuffer[JSONObject] = ListBuffer()
+        val redisList: ListBuffer[JSONObject] = ListBuffer()
+
         for (json <- list) {
           val id = json.getString("_id")
           val jsonStr: String = JSON.toJSONString(json,SerializerFeature.DisableCircularReferenceDetect)
           println("topic: "+topic+", redisKey: crmReport:dwd:"+tableName+", json: "+jsonStr)
-          jedis.hset("crmReport:dwd:"+tableName,  id+""  ,  jsonStr)
+//          jedis.hset("crmReport:dwd:"+tableName,  id+""  ,  jsonStr)
+//          jedis.hmset("crmReport:dwd:"+tableName,json)
+
+          esList.append(json)
+          if(esList.size ==1000){
+            MyESUtil.bulkInsert(highLevelClient,tableName,esList)
+            esList.clear()
+          }
         }
-        jedis.close()
+
+        if(esList.size>0){
+          MyESUtil.bulkInsert(highLevelClient,tableName,esList)
+        }
+
+
+//        jedis.close()
+        highLevelClient.close()
       })
 
       //保存offset(driver端周期执行)

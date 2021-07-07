@@ -271,8 +271,9 @@ public class MongoOpLogUtilIncrementShard1 {
 
     private static String resembleJsonFields(Document document1,String database,String tableName,String op) {
         JSONObject jsonObj = new JSONObject();
-        String _id = document1.getObjectId("_id").toHexString();
-        document1.put("_id",_id);
+//        String _id = document1.getObjectId("_id").toHexString();
+//        document1.put("_id",_id);
+        document1.remove("_id");
         jsonObj.put("data",document1);
         jsonObj.put("database",database);
         jsonObj.put("table",tableName);

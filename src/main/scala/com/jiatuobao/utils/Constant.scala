@@ -4,7 +4,7 @@ object Constant {
 
   final val report_maxwell_topic = "report_maxwell"
 
-  final val group = "_group2"
+  final val group = "_group3"
 
   //tableNames
   final val clue_saas_crm_customer_field = "clue_saas_crm_customer_field"
