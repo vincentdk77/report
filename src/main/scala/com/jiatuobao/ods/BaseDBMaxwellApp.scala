@@ -104,29 +104,30 @@ object BaseDBMaxwellApp {
 //              println(jsonObj.toJSONString)
 
               if(dataJsonObj!=null && !dataJsonObj.isEmpty ){
-                var sendTopic = ""
-                if(tableNames.contains(tableName)){
-                  //拼接要发送到的主题
-                  sendTopic = "ods_" + tableName
+                  var sendTopic = ""
+                  if(tableNames.contains(tableName)){
+                      //拼接要发送到的主题
+                      sendTopic = "ods_" + tableName
 
-                  println(sendTopic+":"+dataJsonObj.toString)
-                  MyKafkaSink.send(sendTopic,dataJsonObj.toString)
+                      println("sendTopic:"+sendTopic+" ,json:"+dataJsonObj.toString)
+                      MyKafkaSink.send(sendTopic,dataJsonObj.toString)
 
-                }else if (tableName.startsWith("saas_clue") 
-                  || tableName.startsWith("saas_customer") 
-                  || tableName.startsWith("saas_contact") 
-                  || tableName.startsWith("saas_opport") 
-                  || tableName.startsWith("saas_agreement") 
-                  || tableName.startsWith("saas_record")) {
+                  }else if (tableName.startsWith("saas_clue.")
+                            || tableName.startsWith("saas_customer.")
+                            || tableName.startsWith("saas_contact.")
+                            || tableName.startsWith("saas_opport.")
+                            || tableName.startsWith("saas_agreement.")
+                            || tableName.startsWith("saas_record.")) {
 
-                  val tableName1 = tableName.substring(0, tableName.lastIndexOf("."))
-                  val tenantId = tableName.substring(tableName.lastIndexOf(".") + 1).toInt
+                      println("tableName:"+tableName)
+                      val tableName1 = tableName.substring(0, tableName.lastIndexOf("."))
+                      val tenantId = tableName.substring(tableName.lastIndexOf(".") + 1).toInt
 
-                  sendTopic = "ods_" + tableName1
-                  dataJsonObj.put(Constant.tenantId,tenantId)
-                  println(sendTopic+":"+dataJsonObj.toString)
-                  MyKafkaSink.send(sendTopic,dataJsonObj.toString)
-                }
+                      sendTopic = "ods_" + tableName1
+                      dataJsonObj.put(Constant.tenantId,tenantId)
+                      println("sendTopic:"+sendTopic+" ,json:"+dataJsonObj.toString)
+                      MyKafkaSink.send(sendTopic,dataJsonObj.toString)
+                  }
 
 
               }

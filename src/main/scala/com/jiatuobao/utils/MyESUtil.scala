@@ -1,28 +1,20 @@
 package com.jiatuobao.utils
 
-import com.alibaba.fastjson.serializer.{SerializeConfig, SerializerFeature}
-import com.alibaba.fastjson.{JSON, JSONObject}
+import com.alibaba.fastjson.JSONObject
 import org.apache.http.HttpHost
 import org.apache.http.auth.{AuthScope, UsernamePasswordCredentials}
-import org.apache.http.client.CredentialsProvider
 import org.apache.http.client.config.RequestConfig
 import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.elasticsearch.action.DocWriteRequest.OpType
 import org.elasticsearch.action.bulk.{BulkItemResponse, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.client.ml.PostDataRequest
-import org.elasticsearch.client.{HttpAsyncResponseConsumerFactory, RequestOptions, RestClient, RestClientBuilder, RestHighLevelClient}
-import org.elasticsearch.cluster.metadata.MetaDataIndexTemplateService.PutRequest
+import org.elasticsearch.client._
 import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.index.query.{BoolQueryBuilder, MatchQueryBuilder, TermQueryBuilder}
-import org.elasticsearch.search.builder.SearchSourceBuilder
-import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder
-import org.elasticsearch.search.sort.SortOrder
-import org.slf4j.{Logger, LoggerFactory}
 
 import java.text.SimpleDateFormat
 import scala.collection.mutable.ListBuffer
+
 /**
   * Desc: 操作ES的客户端工具类
   */
