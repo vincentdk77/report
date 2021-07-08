@@ -12,6 +12,7 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.streaming.dstream.{DStream, InputDStream}
 import org.apache.spark.streaming.kafka010.{ConsumerStrategies, HasOffsetRanges, KafkaUtils, LocationStrategies, OffsetRange}
 import org.apache.spark.{SparkConf, streaming}
+import org.slf4j.{Logger, LoggerFactory}
 import redis.clients.jedis.Jedis
 
 import java.text.SimpleDateFormat
@@ -21,6 +22,7 @@ import java.util.{Date, Properties}
   * Desc: 从Kafka中读取数据，保存到Phoenix
   */
 object SysUser2App {
+  private val log: Logger = LoggerFactory.getLogger(this.getClass)
 
   def main(args: Array[String]): Unit = {
     //1、从kafka读数据（1、从redis获取offset，2、转换类型，3、存入redis中或者hbase中）
@@ -43,11 +45,11 @@ object SysUser2App {
 
     //获取当前采集周期中读取的主题对应的分区以及偏移量
     var offsetRanges: Array[OffsetRange] = Array.empty[OffsetRange]
-    println("driver端，执行一次")
+//    println("driver端，执行一次")
     val offsetDStream: DStream[ConsumerRecord[String, String]] = recordDStream.transform {
       rdd => {
         //在driver端周期性执行
-        println("driver端，周期性执行")
+//        println("driver端，周期性执行")
         offsetRanges = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
         rdd
       }
@@ -56,7 +58,7 @@ object SysUser2App {
     //map转换类型
     val user2Stream: DStream[SysUser2] = offsetDStream.map(record => {
       val value: String = record.value()
-      println(topic+":"+value)
+      log.warn(topic+":"+value)
       val user: SysUser2 = JSON.parseObject(value, classOf[SysUser2])
 
       reAssembleFields(user)
@@ -82,7 +84,7 @@ object SysUser2App {
            */
 //          println("user:"+user)
           val jsonStr: String = JSON.toJSONString(user, SerializerFeature.DisableCircularReferenceDetect)
-          println("topic: "+topic+", redisKey: crmReport:dwd:"+tableName+", json: "+jsonStr)
+          log.warn("topic: "+topic+", redisKey: crmReport:dwd:"+tableName+", json: "+jsonStr)
 //          println("json:"+json)
           jedis.hset("crmReport:dim:sys_user2",user.id+"",jsonStr)
         })

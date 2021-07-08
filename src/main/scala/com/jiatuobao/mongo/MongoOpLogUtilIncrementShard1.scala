@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 import scala.collection.mutable.ListBuffer
 
 object MongoOpLogUtilIncrementShard1 {
-  private val log: Logger = LoggerFactory.getLogger(MongoOpLogUtilIncrementShard1.getClass)
+  private val log: Logger = LoggerFactory.getLogger(this.getClass)
   private var queryTs:BsonTimestamp = null
   private var nsLists: ListBuffer[String] = ListBuffer()
 
@@ -51,7 +51,7 @@ object MongoOpLogUtilIncrementShard1 {
         false
       }
     })
-    System.out.println("查询oplog的命名空间list:" + nsLists)
+    println("查询oplog的命名空间list:" + nsLists)
 
     //获取oplog时间戳
     val ts:String = jedis.get("mongo:ts");
@@ -141,7 +141,7 @@ object MongoOpLogUtilIncrementShard1 {
               queryTs = document.get("ts").asInstanceOf[BsonTimestamp]
               //保存时间戳
               jedis.set("mongo:ts", JSON.toJSONString(queryTs,SerializerFeature.DisableCircularReferenceDetect))
-              println("ts:" + queryTs)
+              log.warn("ts:" + queryTs)
               //                        jedis.close();
               //                        log.warn("操作时间戳：" + queryTs.getTime());
               //                        log.warn("操作类型：" + op);

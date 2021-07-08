@@ -18,7 +18,7 @@ import java.util.stream.Collectors
 import scala.collection.mutable.ListBuffer
 
 object MongoOpLogUtilAll {
-  private val log: Logger = LoggerFactory.getLogger(MongoOpLogUtilAll.getClass)
+  private val log: Logger = LoggerFactory.getLogger(this.getClass)
   private var queryTs:BsonTimestamp = null
   private var nsLists: ListBuffer[String] = ListBuffer()
 
@@ -58,7 +58,7 @@ object MongoOpLogUtilAll {
           false
         }
     })
-    System.out.println("查询oplog的命名空间list:" + nsLists)
+    println("查询oplog的命名空间list:" + nsLists)
 
     //获取oplog时间戳
     val opLogCollection: MongoCollection[Document] = mongoClient.getDatabase("local").getCollection("oplog.rs")
@@ -148,6 +148,7 @@ object MongoOpLogUtilAll {
             queryTs = document.get("ts").asInstanceOf[BsonTimestamp]
             //保存时间戳
             jedis.set("mongo:ts", JSON.toJSONString(queryTs,SerializerFeature.DisableCircularReferenceDetect))
+            log.warn("ts:" + queryTs)
             //                        jedis.close();
             //                        log.warn("操作时间戳：" + queryTs.getTime());
             //                        log.warn("操作类型：" + op);

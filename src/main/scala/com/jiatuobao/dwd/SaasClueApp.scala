@@ -15,6 +15,7 @@ import org.apache.spark.streaming.dstream.{DStream, InputDStream}
 import org.apache.spark.streaming.kafka010.{HasOffsetRanges, OffsetRange}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.elasticsearch.client.RestHighLevelClient
+import org.slf4j.{Logger, LoggerFactory}
 import redis.clients.jedis.Jedis
 
 import java.util
@@ -22,6 +23,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 object SaasClueApp {
+  private val log: Logger = LoggerFactory.getLogger(this.getClass)
 
   def main(args: Array[String]): Unit = {
     val tableName = Constant.saas_clue
@@ -140,12 +142,12 @@ object SaasClueApp {
         //组装各种fieldParam参数
         for (fieldKey <- paramKeySet.asScala) {
           if (jsonObj.containsKey(fieldKey)) { //本条数据包含参数字段
-            println("包含该字段!!"+fieldKey)
+//            println("包含该字段!!"+fieldKey)
             val fieldValue: String = jsonObj.getString(fieldKey)
             if(StringUtils.isNotBlank(fieldValue)){
               val display = paramMapMap.getOrElse(tenantId + ":" + fieldKey + ":" + fieldValue, "")
-              println("key:"+tenantId + ":" + fieldKey + ":" + fieldValue)
-              println("display:"+display)
+//              println("key:"+tenantId + ":" + fieldKey + ":" + fieldValue)
+//              println("display:"+display)
               if(StringUtils.isNotBlank(display)){
                 jsonObj.put(fieldKey + "Name", display)
               }
@@ -218,7 +220,7 @@ object SaasClueApp {
         for (json <- list) {
           val id = json.getString("_id")
           val jsonStr: String = JSON.toJSONString(json,SerializerFeature.DisableCircularReferenceDetect)
-          println("topic: "+topic+", redisKey: crmReport:dwd:"+tableName+", json: "+jsonStr)
+          log.warn("topic: "+topic+", redisKey: crmReport:dwd:"+tableName+", json: "+jsonStr)
 //          jedis.hset("crmReport:dwd:"+tableName,  id+""  ,  jsonStr)
 //          jedis.hmset("crmReport:dwd:"+tableName,json)
 

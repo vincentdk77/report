@@ -9,9 +9,11 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.InputDStream
 import org.apache.spark.streaming.kafka010.{HasOffsetRanges, OffsetRange}
+import org.slf4j.{Logger, LoggerFactory}
 import redis.clients.jedis.Jedis
 
 class ProcessUtil {
+  private val log: Logger = LoggerFactory.getLogger(this.getClass)
 
   def process(ssc: StreamingContext, topic: String, groupId: String,tableName:String) = {
     //从redis读取offset
@@ -63,7 +65,7 @@ class ProcessUtil {
         for (json <- list) {
           val id = json.getInteger("id")
           val jsonStr: String = JSON.toJSONString(json,SerializerFeature.DisableCircularReferenceDetect)
-          println("topic: "+topic+", redisKey: crmReport:dwd:"+tableName+", json: "+jsonStr)
+          log.warn("topic: "+topic+", redisKey: crmReport:dwd:"+tableName+", json: "+jsonStr)
           jedis.hset("crmReport:dim:"+tableName,  id+""  ,  jsonStr)
         }
         jedis.close()

@@ -19,15 +19,15 @@ import scala.collection.mutable.ListBuffer
   * Desc: 操作ES的客户端工具类
   */
 object MyESUtil {
-  private val ALI_ES_HOST = "es-cn-6ja1ycolz00179md6.public.elasticsearch.aliyuncs.com" //old
-  private val ALI_ES_PORT = 9200
-  private val SCHEMA = "http"
-  private val ALI_ES_USERNAME = "elastic"
-  private val ALI_ES_PASSWORD = "gitbo@1212"
-  private val format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss")
-//  private var client: RestHighLevelClient = null
   private var COMMON_OPTIONS: RequestOptions = null
   private var clientBuilder: RestClientBuilder = null
+
+  val prop = MyPropertiesUtil.load("config.properties")
+  val HOST = prop.getProperty("es.host")
+  val PORT = prop.getProperty("es.port").toInt
+  val USERNAME = prop.getProperty("es.username")
+  val PASSWORD = prop.getProperty("es.password")
+  val SCHEMA = "http"
 
   /**
    * 提供获取RestHighLevelClient客户端的方法
@@ -45,6 +45,7 @@ object MyESUtil {
    */
   def build(): Unit = {
 
+
     val builder: RequestOptions.Builder = RequestOptions.DEFAULT.toBuilder
 
     // 默认缓存限制为100MB
@@ -52,10 +53,10 @@ object MyESUtil {
     COMMON_OPTIONS = builder.build
 
     val credentialsProvider = new BasicCredentialsProvider
-    credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(ALI_ES_USERNAME, ALI_ES_PASSWORD)) // 密码凭证
+    credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(USERNAME, PASSWORD)) // 密码凭证
 
     clientBuilder =
-      RestClient.builder(new HttpHost(ALI_ES_HOST, ALI_ES_PORT, SCHEMA)).setRequestConfigCallback(new RestClientBuilder.RequestConfigCallback() {
+      RestClient.builder(new HttpHost(HOST, PORT, SCHEMA)).setRequestConfigCallback(new RestClientBuilder.RequestConfigCallback() {
 
         override def customizeRequestConfig(builder: RequestConfig.Builder): RequestConfig.Builder = {
             builder.setConnectTimeout(5 * 60 * 1000) // 连接建立时间，三次握手完成时间（单位：毫秒）
